@@ -53,3 +53,17 @@ Constellation.
 
 ## An Example for Motivation
 
+```Lua
+
+function 
+
+end
+```
+
+```
+
+cqf symbols(d : iterable)
+	from d select unique .ticker
+end
+
+```
