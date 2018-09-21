@@ -53,6 +53,21 @@ Constellation.
 
 ## An Example for Motivation
 
+```Lua
+
+function 
+
+end
+```
+
+```
+
+cqf symbols(d : iterable)
+	from d select unique .ticker
+end
+
+```
+
 # Unformatted Rambling
 
 Constellation consists of two main interacting components: The datastructure

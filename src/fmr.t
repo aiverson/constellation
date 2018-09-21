@@ -1,9 +1,48 @@
 
 
+local C = terralib.includec"stdio.h"
 
 local fmr_methodmissing
 
 local productions = {
+
+	diff = function(source, func)
+		local stype = source.tree.type 
+		local ttype = func.tree.type
+
+		local struct DiffImpl {
+			src: stype
+			difff: ttype
+		}
+
+		DiffImpl.ressym = symbol(ttype.type.returntype, "DiffImpl_ressym") 
+		DiffImpl.selfsym = symbol(DiffImpl, "DiffImpl_self")
+		local first = symbol(bool, "DiffImpl_first_pass")
+		local lval = symbol(ttype.type.parameters[1], "DiffImpl_lval")
+		DiffImpl.generate = function(skip, finish) return quote
+			if [first] then
+				[stype.generate(skip, finish)]
+				[lval] = [stype.ressym]
+				[first] = false
+				goto [skip] 
+			else
+				[stype.generate(skip, finish)]
+				[DiffImpl.ressym] = [DiffImpl.selfsym].difff([lval], [stype.ressym])
+				[lval] = [stype.ressym]
+			end
+		end end
+
+		DiffImpl.initialize = function() return quote
+			var [stype.selfsym] = [DiffImpl.selfsym].src
+			var [DiffImpl.ressym]
+			var [first] = true
+			var [lval]
+			[stype.initialize()]
+		end end
+
+		DiffImpl.metamethods.__methodmissing = fmr_methodmissing
+		return `DiffImpl {[source], [func]}
+	end,
 
 	take = function(source, count)
 		local stype = source.tree.type
@@ -85,6 +124,20 @@ local productions = {
 		return `FilterImpl {[source], [transform]}
 	end,
 
+	each = function(source)
+		local stype = source.tree.type
+		local skip, finish = label("skip"), label("finish")
+		return quote 
+			var [stype.selfsym] = [source]
+			[stype.initialize()]
+			while true do
+				:: [skip] ::
+				[stype.generate(skip, finish)]
+			end
+			:: [finish] ::
+		end
+
+	end,
 	reduce = function(source, func, acc)
 		--terralib.printraw(func)
 		local ReduceImpl
@@ -192,7 +245,6 @@ local function ArrayList(elemt)
 	return ALImpl
 end
 
-local C = terralib.includec"stdio.h"
 
 terra sqr(a: int): int --[[C.printf("%d\n", a);]] return a * a end
 terra sum(a: int, b: int): int
@@ -212,8 +264,15 @@ terra first10()
 	return range(1, 100, 1):take(8):take(3):reduce(sum)
 end
 
-print(first10:disas())
-print(first10())
+terra diffAdd()
+	return range(1, 6, 1):diff(sum):reduce(sum)
+end
+
+diffAdd:disas()
+print(diffAdd)
+print(diffAdd())
+--print(first10:disas())
+--print(first10())
 
 --terralib.printraw(sumofsquares)
 --print(sumofsquares)
