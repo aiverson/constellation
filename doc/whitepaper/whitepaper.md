@@ -53,20 +53,34 @@ Constellation.
 
 ## An Example for Motivation
 
+Suppose that we have a bunch of stock data in a map which is keyed on dates 
+pointing to data structures containing information about various stocks. We 
+to get a list of unique ticker symbols in our data set.
+
 ```Lua
 
-function 
-
+function get_tickers(stock_data)
+	local ticker, retval = {}, {} 
+	for i=1, #stock_data do
+		if ticker[stock_data[i].ticker] == nil then
+			retval[#retval + 1] = stock_data[i].ticker
+			ticker[stock_data[i].ticker] = true
+		end
+	end
+	return retval
 end
 ```
 
-```
-
-cqf symbols(d : iterable)
-	from d select unique .ticker
-end
+With Constellation we might express the same functionality as:
 
 ```
+	local ticker_symbols = from stock_data select unique .ticker  
+```
+
+Obviously the latter case is faster to type. Additionally, due to some 
+optimization steps which can be applied generally to these sorts of queries 
+Constellation can also produce code which is likely to run faster than the 
+code a human is likely to write.
 
 # Unformatted Rambling
 
