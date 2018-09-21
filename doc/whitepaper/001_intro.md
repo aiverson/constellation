@@ -53,3 +53,52 @@ Constellation.
 
 ## An Example for Motivation
 
+# Unformatted Rambling
+
+Constellation consists of two main interacting components: The datastructure
+definition language and the query language.
+
+The Datastructure definition language will allow creating, combining, and
+customizing datastructures and algorithms in a flexible and composable way.
+These datastructures will expose a normal terra interface suitable for use in any
+terra code as well as compiling a library for C, C++, or anything else with a
+compatible ABI.
+
+The query language will have an iterator based interface and a syntax inspired by LINQ.
+It will provide a simple way to build optimized produce-transduce-consume chains,
+either for inline use, or exporting as a library.
+
+The datastructure definition language will have a variety of facilities to produce
+iterators compatible with the query language easily, and queries may be embeded in
+algorithmic definitions.
+
+The limitations of conventional templating systems and libraries, like the C++ STL
+provides a sharp limit on their abilities to provide algorithmic facilities, 
+resulting in the necessity of reimplementing large sections of common algorithms
+for each new use rather than just specifying the small sections that are different.
+Constellation DSA will allow producing configurable and templatized mixins which
+efficiently implement the desired behavior with a minimum of boiler plate.
+
+One advantage of the Constellation DSA approach is the ability to define
+intrusive datastructures easily. In languages with powerful MetaObject Protocols
+(MOPs), intrusive datastructures can be defined, though they are typically not
+very clean implementations. MOPs require a significant amount of indirection,
+computation, and runtime overhead, so these datastructures cannot match
+handwritten native implementations. Existing languages using conventional
+templates without a MOP are able to create very efficient extrusive datastructures,
+but are completely incapable of creating intrusive datastructures. Constellation
+will be capable of efficiently and cleanly defining both intrusive and extrusive
+datastructures, and will allow sharing most of the implementation code between
+them and will allow interchangeable usage of the common features.
+
+A capabilities and aspect based system with syntax support will allow
+datastructures and algorithms to specify their interactions in a manner which
+makes them composable automatically, so even very dissimilar datastructures and
+algorithms can be seamlessly woven together in a common collection without
+extensive manual work joining them together.
+
+Constellation Query will allow producing highly efficient in-memory queries by
+use of extensive inlining and minimal indirection. Constellation queries will
+produce native code implementing the entire query chain in a single code block,
+which avoids both the high memory usage and cache misses of intermediate arrays
+and the many indirections required for chained iterators.
