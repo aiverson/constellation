@@ -39,7 +39,7 @@ Terra was chosen as a host language due to the flexibility offered by the
 design of Terra, which integrates Lua, a high level scripting language with a
 small low level programming language, Terra. The result is a rich language that
 is capable of on the fly run time code generation, self optimization, and lends
-itself specifically well to multistage programming. Despite being a relatively 
+itself especially well to multistage programming. Despite being a relatively 
 new language Terra has quickly found itself on the cutting edge of applications
 varying from high speed physics simulations to digital image processing.
 
@@ -69,18 +69,42 @@ function get_tickers(stock_data)
 	end
 	return retval
 end
+
+function get_tickers(stock_data)
+	local set, list = {}, {}
+	for _, v in ipairs(stock_data) do set[v.ticker] = true end
+	for name, _ in pairs(set) do table.insert(list, name) end
+	return list
+end
 ```
 
 With Constellation we might express the same functionality as:
 
 ```
-	local ticker_symbols = from stock_data select unique .ticker  
+	local ticker_symbols = from d in stock_data unique d.ticker map d.ticker end 
 ```
 
 Obviously the latter case is faster to type. Additionally, due to some 
 optimization steps which can be applied generally to these sorts of queries 
 Constellation can also produce code which is likely to run faster than the 
 code a human is likely to write.
+
+As a further, more complicated example consider the following:
+
+```
+	local dailydeltas = from d in stock_data
+		ticker, delta = groupBy d.ticker do
+			volume = groupBy d.date do
+				reduce volume = 0 in volume + d.volume
+			end
+			delta = diff a, b = volume in a - b
+			list = build List {date = d.date, delta = delta}
+			return d.ticker, list
+		end
+		build Map (ticker, delta)
+	end
+```
+
 
 # Unformatted Rambling
 
@@ -131,3 +155,15 @@ use of extensive inlining and minimal indirection. Constellation queries will
 produce native code implementing the entire query chain in a single code block,
 which avoids both the high memory usage and cache misses of intermediate arrays
 and the many indirections required for chained iterators.
+
+Constellation DSA will be based on Aspect Oriented Programming, though with a more
+restricted form of pointcut to permit full compilation and inlining of advice and
+to reduce the nonlocality caused by normal AOP. An algorithm implementation may expose
+pointcuts whereby additional operations may be composed. This allows customizing
+standard algorithms for a particular need with no extra overhead. Every datastructure will
+expose a pointcuts with various granularites on modifications to permit composed structures
+to update dependent structures. These must never produce a loop. A collection may be
+composed of multiple data structures. These datastructures may provide implementations
+of many methods. The system of advice and pointcuts will permit specializing the
+datastructures and automate the process of crosslinking data between them where
+necessary.
