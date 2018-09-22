@@ -52,7 +52,7 @@ As a further, more complicated example consider the following:
 
 This code illustrates the ease with which Constellation queries and data 
 structure definitions may be composed. The operations in each of the statements
-are inlined, and indirection removed where possible, before the code is 
+are inlined, and indirection removed where possible before the code is 
 compiled, ensuring that higher performance is achieved than would have been 
 with multiple loops calling out to other functions to perform grouping and 
 reduction.
@@ -87,5 +87,5 @@ end
 ```
 
 The syntax allows creation of iterators easily over any object in Terra which 
-greatly easing the process of integrating new data sources and libraries into 
+greatly eases the process of integrating new data sources and libraries into 
 Constellation.
