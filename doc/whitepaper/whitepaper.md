@@ -167,3 +167,33 @@ composed of multiple data structures. These datastructures may provide implement
 of many methods. The system of advice and pointcuts will permit specializing the
 datastructures and automate the process of crosslinking data between them where
 necessary.
+
+There will be a special syntax support for creating iterators from scratch as
+well as for querying them. Syntax example for creating an iterator type over
+ranges of integers follows.
+
+```
+iterator intrange(start: int, stop: int, step: int)
+		var val: int
+	initialize
+		val = start
+	iterate
+		if val > stop then
+			finish
+		end
+		yield val
+		val += step
+	finalize
+		--no finalization behavior necessary here
+end
+
+query sumofsquares(limit: int)
+	from i in intrange(1, limit, 1)
+		map s = i * i
+		reduce sum = 0 by sum + s
+	end
+end
+```
+
+This will allow creating iterators easily over any object in Terra which will
+greatly ease integrating new datasources and libraries into Constellation.
