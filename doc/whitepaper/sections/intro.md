@@ -61,10 +61,76 @@ data structures implement normal terra interfaces, allowing them to be used in
 any other terra code, or compiled to an object file for linking with C, C++ or 
 any other language featuring a compatible ABI.
 
+### Iterators
+
+At the core of the data structure definition language is the generalization of 
+iterator types that can be generated from more basic data structures (like 
+arrays, lists, trees, and graphs.) These iterators are composed with the query 
+language in mind, such that the queries may be embedded in the definitions.
+
+### Not a Template System
+
+Template systems, like that of the C++ STL, are limited in their support of 
+meta-programmed algorithms. The result is that algorithms are often rewritten 
+in their entirety for a new data structure, rather than modifying the one or two
+statements necessary to adapt a generalized algorithm to the new type. The 
+Constellation data structure language seeks to provide the features of a 
+template system, along with mixins, in a configurable and efficient package 
+which enables the creation of new types with minimal boiler plate requirements.
+
+### Data Structure Efficiency 
+
+The Constellation data structure definition language seeks to meet or exceed 
+the efficiency of hand written native code, as such intrusive data structures
+have been given special thought. Languages which feature powerful MetaObject 
+Protocols (MOP) enable programmers to create intrusive data structures. 
+However, the resulting data structures and associated algorithms tend to be far 
+slower than native implementations, as they are hampered by significant amounts 
+of indirection, computation, and runtime overhead. Languages featuring 
+conventional template systems are capable of defining highly efficient 
+extrusive data structures but completely lack the ability to create intrusive 
+data structures. Constellation looks to make the creation of both intrusive and
+extrusive data structures cleanly and efficiently. Additionally, most of the 
+implementation code between the two is interchangeable, allowing the data 
+structures themselves to be used interchangeably in a majority of common use 
+cases.
+
+### Capabilities and Aspect
+
+
+A capabilities and aspect based system with syntax support allows the data 
+structures and algorithms to specify their interactions in a manner which 
+makes composition automatic, even in the case of very dissimilar data 
+structures and algorithms. This allows the seamless joinery of a common 
+collection which does not require extensive manual work to create custom 
+interfaces between differing structures.
+
+Constellation's data structure description implementation is be based on Aspect 
+Oriented Programming, though with a more restricted form of pointcut to permit 
+full compilation and inlining of advice and to reduce the nonlocality caused by 
+normal AOP. An algorithm implementation may expose pointcuts whereby additional 
+operations may be composed. This allows customizing standard algorithms for a 
+particular need with no extra overhead. Every data structure will expose 
+pointcuts with various granularities on modifications to permit composed 
+structures to update dependent structures. These must never produce a loop.
+A collection may be composed of multiple data structures. These data structures 
+may provide implementations of many methods. The system of advice and pointcuts 
+will permit specializing the data structures and automate the process of 
+cross linking data between them where necessary.
+
 ## The Data Query Language 
 
 Featuring a Language Integrated Query (LINQ) inspired syntax the data query 
 language provides tools for quickly building produce-transduce-consume chains
 which may be in line with other terra code, or compiled to an object file for 
 linking with C, C++, or any other language featuring a compatible ABI.
+
+### Optimization of Queries 
+
+Constellation Query allows the production of highly efficient in-memory queries 
+through extensive inlining and indirection reduction. Constellation queries 
+produce native code implementing the entire query chain in a single code block,
+avoiding both the high memory usage and cache misses of intermediate arrays
+and the many indirections required for chained iterators.
+
 
