@@ -39,7 +39,7 @@ Terra was chosen as a host language due to the flexibility offered by the
 design of Terra, which integrates Lua, a high level scripting language with a
 small low level programming language, Terra. The result is a rich language that
 is capable of on the fly run time code generation, self optimization, and lends
-itself specifically well to multistage programming. Despite being a relatively 
+itself especially well to multistage programming. Despite being a relatively 
 new language Terra has quickly found itself on the cutting edge of applications
 varying from high speed physics simulations to digital image processing.
 
@@ -87,11 +87,11 @@ Protocols (MOP) enable programmers to create intrusive data structures.
 However, the resulting data structures and associated algorithms tend to be far 
 slower than native implementations, as they are hampered by significant amounts 
 of indirection, computation, and runtime overhead. Languages featuring 
-conventional template systems are capable of defining highly efficient 
+conventional template systems are capable of defining efficient 
 extrusive data structures but completely lack the ability to create intrusive 
 data structures. Constellation looks to make the creation of both intrusive and
-extrusive data structures cleanly and efficiently. Additionally, most of the 
-implementation code between the two is interchangeable, allowing the data 
+extrusive data structures clean and efficient. Additionally, most of the 
+implementation code between the two is reusable, allowing the data 
 structures themselves to be used interchangeably in a majority of common use 
 cases.
 
@@ -127,7 +127,7 @@ linking with C, C++, or any other language featuring a compatible ABI.
 
 ### Optimization of Queries 
 
-Constellation Query allows the production of highly efficient in-memory queries 
+Constellation Query allows the production of very efficient in-memory queries 
 through extensive inlining and indirection reduction. Constellation queries 
 produce native code implementing the entire query chain in a single code block,
 avoiding both the high memory usage and cache misses of intermediate arrays
