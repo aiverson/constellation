@@ -56,3 +56,36 @@ are inlined, and indirection removed where possible, before the code is
 compiled, ensuring that higher performance is achieved than would have been 
 with multiple loops calling out to other functions to perform grouping and 
 reduction.
+
+### Creation of Iterators
+
+Constellation is designed with special syntax support for creating iterators 
+from scratch. The query language is specifically designed to work with the 
+resulting iterators. An iterator over a range of integers might look this:
+
+```
+iterator intrange(start: int, stop: int, step: int)
+		var val: int
+	initialize
+		val = start
+	iterate
+		if val > stop then
+			finish
+		end
+		yield val
+		val += step
+	finalize
+		--no finalization behavior necessary here
+end
+
+query sumofsquares(limit: int)
+	from i in intrange(1, limit, 1)
+		map s = i * i
+		reduce sum = 0 by sum + s
+	end
+end
+```
+
+The syntax allows creation of iterators easily over any object in Terra which 
+greatly easing the process of integrating new data sources and libraries into 
+Constellation.
