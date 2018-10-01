@@ -180,6 +180,7 @@ local productions = {
 
 	--]]
 	each = function(source, appfn)
+		
 		-- hold the source type 
 		local stype = source.tree.type
 		
@@ -191,20 +192,39 @@ local productions = {
 		-- every element 
 		if appfn then
 			return quote
+				-- set the symbol for our source arg 
 				var [stype.selfsym] = [source]
+
+				-- initialize the function before us 
 				[stype.initialize()]
+
+				-- this is the local name for the application 
+				-- function 
 				var f = [appfn]
+
+				-- loop all of the generated elements of the 
+				-- preceding function
 				while true do
+					
+					-- skip label at the top of the loop
 					:: [skip] ::
+					
+					-- ask function before us in the chain
+					-- for a vaule
 					[stype.generate(skip, finish)]
+
+					-- run our appfn on the generated value 
+					-- note that we're not storing the  
+					-- result of the appfn anywhere. 
 					f([stype.ressym])
 				end
+				
+				-- our finish label
 				:: [finish] ::
 			end
 		else	
-
-		-- returns terra code, a loop which simply repeatedly calls the
-		-- previous function in the composition's listing 
+			-- no appfn given, so we're just going to run an empty 
+			-- pass on each item generated 
 			return quote 
 				
 				-- we must set our own symbol 
