@@ -178,36 +178,54 @@ local productions = {
 
 	simplistic function to step over each value in the iterable
 
-	TODO: Add ability to map a function onto each (LJH)
 	--]]
-	each = function(source)
+	each = function(source, appfn)
 		-- hold the source type 
 		local stype = source.tree.type
-
+		
 		-- create labels for skip and finish so that we can jump to 'em
 		local skip, finish = label("skip"), label("finish")
 
+		-- the function to be applied is an optional argument, it may 
+		-- not be there, if it is, we want to apply the function to 
+		-- every element 
+		if appfn then
+			return quote
+				var [stype.selfsym] = [source]
+				[stype.initialize()]
+				var f = [appfn]
+				while true do
+					:: [skip] ::
+					[stype.generate(skip, finish)]
+					f([stype.ressym])
+				end
+				:: [finish] ::
+			end
+		else	
+
 		-- returns terra code, a loop which simply repeatedly calls the
 		-- previous function in the composition's listing 
-		return quote 
-			
-			-- we must set our own symbol 
-			var [stype.selfsym] = [source]
-
-			-- initialize the code that's set to run ahead of us
-			[stype.initialize()]
-			while true do
+			return quote 
 				
-				-- our skip lable
-				:: [skip] ::
+				-- we must set our own symbol 
+				var [stype.selfsym] = [source]
 
-				-- tell the code that's ahead of us to generate
-				-- the next value 
-				[stype.generate(skip, finish)]
+				-- initialize the code that's set to run ahead 
+				-- of us
+				[stype.initialize()]
+				while true do
+					
+					-- our skip label
+					:: [skip] ::
+
+					-- tell the code that's ahead of us to 
+					-- generate the next value 
+					[stype.generate(skip, finish)]
+				end
+
+				-- our finish label
+				:: [finish] ::
 			end
-
-			-- our finish label
-			:: [finish] ::
 		end
 
 	end,
@@ -343,13 +361,17 @@ terra first10()
 	return range(1, 100, 1):take(8):take(3):reduce(sum)
 end
 
+terra printInt(a: int): int 
+	C.printf("%d, ", a)
+end
+
 terra diffAdd()
-	return range(1, 6, 1):diff(sum):reduce(sum)
+	return range(1, 6, 1):each(printInt)
 end
 
 diffAdd:disas()
 print(diffAdd)
-print(diffAdd())
+diffAdd()
 --print(first10:disas())
 --print(first10())
 
