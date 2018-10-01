@@ -1,4 +1,26 @@
+--[[
+file: constellation/src/fmr.t
+authors: Alex Iverson, Lawrence Hoffman
 
+fmr.t implements a first proof of concept for compiling out filter-map-reduce 
+type queries into an optimized and native format. The methods exposed by fmr 
+are meant as an interface for the back end of constellation.
+
+When considering the functions in the productions table it is important to keep
+in mind that this is code being generated, which actually operates on code 
+being fed to it, and returns values in line with an interface which while 
+expected of any code added to the productions table is not enforced anywhere.
+
+Each of the production functions needs to follow a certain format.
+	(1) A function called initialize which inits the current function
+	(2) A function called generate wich conducts the business of this 
+	    stage in the pipeline
+	(3) Override the .metamethods.__methodmissing with the fmr_methodmissing 
+	    macro. 
+
+We're hoping to get the functions in this file heavily enough documented that 
+any programmer who wishes might be able to add whatever they need on the fly.
+--]]
 
 local C = terralib.includec"stdio.h"
 
@@ -6,6 +28,15 @@ local fmr_methodmissing
 
 local productions = {
 
+	--[[
+	function: diff
+	
+	diff returns a list with the 'difference' function passed applied to 
+	each consecutive pair of items in the iterable.
+
+	So... if our iterable looks like [ 1, 4, 5 ] and we passed a simple 
+	subtraction function, then we aught to get [ 3, 1 ] as a result here.
+	--]]
 	diff = function(source, func)
 		local stype = source.tree.type 
 		local ttype = func.tree.type
@@ -44,6 +75,11 @@ local productions = {
 		return `DiffImpl {[source], [func]}
 	end,
 
+	--[[
+	function: take
+
+	take returns the first 'count' values from the iterable. 
+	--]]
 	take = function(source, count)
 		local stype = source.tree.type
 		local struct TkImpl {
@@ -71,7 +107,13 @@ local productions = {
 		TkImpl.metamethods.__methodmissing = fmr_methodmissing
 		return `TkImpl {[source], [count]}
 	end,
-	
+
+	--[[
+	function: map
+
+	map takes a transformation function which mutates an iterable and 
+	applies that function elementwise on the iterable.
+	--]]
 	map = function(source, transform)
 		local stype = source.tree.type
 		local ttype = transform.tree.type
@@ -96,6 +138,13 @@ local productions = {
 		MapImpl.metamethods.__methodmissing = fmr_methodmissing
 		return `MapImpl {[source], [transform]}
 	end,
+
+	--[[
+	function: filter
+
+	filter selects or removes elements from an iterable by application of 
+	the given transofrm function.
+	--]]
 	filter = function(source, transform)
 		local stype = source.tree.type
 		local ttype = transform.tree.type
@@ -124,20 +173,50 @@ local productions = {
 		return `FilterImpl {[source], [transform]}
 	end,
 
+	--[[
+	function: each
+
+	simplistic function to step over each value in the iterable
+
+	TODO: Add ability to map a function onto each (LJH)
+	--]]
 	each = function(source)
+		-- hold the source type 
 		local stype = source.tree.type
+
+		-- create labels for skip and finish so that we can jump to 'em
 		local skip, finish = label("skip"), label("finish")
+
+		-- returns terra code, a loop which simply repeatedly calls the
+		-- previous function in the composition's listing 
 		return quote 
+			
+			-- we must set our own symbol 
 			var [stype.selfsym] = [source]
+
+			-- initialize the code that's set to run ahead of us
 			[stype.initialize()]
 			while true do
+				
+				-- our skip lable
 				:: [skip] ::
+
+				-- tell the code that's ahead of us to generate
+				-- the next value 
 				[stype.generate(skip, finish)]
 			end
+
+			-- our finish label
 			:: [finish] ::
 		end
 
 	end,
+
+	--[[
+	function: reduce
+
+	reduces an iterable via func, possibly with accumulation
+	--]]
 	reduce = function(source, func, acc)
 		--terralib.printraw(func)
 		local ReduceImpl
