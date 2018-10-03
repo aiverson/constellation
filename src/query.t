@@ -1,48 +1,105 @@
+--[[
+	query.t
 
+	parsing for constellation query language
+--]]
 local parsing = require 'parsing'
 
 local lang = {}
 
+-- Construct AST given the Parser and a string indicating the kind of AST node
+-- we'll be building a tree for
 local function Tree(P, kind)
 	return {kind = kind, linenumber = P:cur().linenumber, filename = P.source, offset = P:cur().offset }
 end
 
+-- Empty list of statements later used to place into the AST in situations where
+-- a statement is expected, but no code should be generated.
 local emptystatements = {kind = "statements", stats = terralib.newlist()}
 
+--[[
+    Parsing logic for the from expression for the constellation language
+
+    ex: from <varname> in <iterable> map mapfunc(<varname>) end 
+
+    Returns an AST for the parsed from - in - expr 
+--]]
 function lang.from(P)
 	-- must be a from expression
 	P:expect("from")
+	-- init AST for from statement 
 	local tree = Tree(P, "from")
+	-- Pull the name of the variable to be iterated over into varname 
 	tree.varname = P:expect(P.name).value
+	-- Expect the keyword in, to be followed by an expression 
 	P:expect("in")
+	-- Select the expression as a luaexpr
+	-- TODO: Should probably be a constellation expression rather than lua 
 	tree.sourceiter = P:luaexpr()
+	-- body contains the chain of queries within this expression 
 	tree.body = P:querychain()
 	return tree
 end
 
+--[[
+    Parsing logic for an iterator statement 
+
+    currently supports the following syntax:
+    	iterator <name(name: type, ...)> 
+		[initialize <statement, statement, ...>]
+		iterate <statement, statement, ...>
+		[finalize <statement, statement, ...>]
+		end
+    
+    Note: iterate statements must contain a yield and a finish, though that is
+    not currently enforced
+
+    TODO: Enforce the use of yield and finish
+--]]
 function lang.iterator(P)
 	-- must be an iterator statement
 	P:expect("iterator")
+	-- build the tree for this statement 
 	local tree = Tree(P, "iterator")
+	-- tree takes a name that is the value of the iterator 
 	tree.name = P:expect(P.name).value
+	-- arglist is used for initialization of data structures (constructor
+	-- arguments)
 	tree.args = P:arglist()
+	-- initialize is optional, and followed by statements if present
 	if P:nextif("initialize") then
 		tree.initialize = P:statements()
 	else
+		-- push noop into initialize if not present 
 		tree.initialize = emptystatements
 	end
+
+	-- iterate is required
 	P:expect("iterate")
+	-- list of statements which control iteration of the created data type
+	-- these statments must include yield and finish 
 	tree.iterate = P:statements()
+	
+	-- finalize is optional, viewed like a destructor
 	if P:nextif("finalize") then
 		tree.finalize = P:statements()
 	else
+		-- noop if not present 
 		tree.finalize = emptystatements
 	end
 	P:expect("end")
 	return tree
 end
 
+--[[
+	Construct an operation in a query chain's AST
+
+	
+
+--]]
 function lang.queryelem(P)
+	-- map operator
+	-- map summap = s.a + s.b
 	if P:nextif("map") then
 		local tree = Tree(P, "map")
 		tree.name = P:expect(P.name).value
@@ -74,6 +131,7 @@ function lang.queryelem(P)
 	end
 end
 
+-- Called to combine query elements into an AST
 function lang.querychain(P)
 	local tree = Tree(P, "querychain")
 	tree.elems = terralib.newlist()
@@ -82,6 +140,7 @@ function lang.querychain(P)
 	until P:nextif "end"
 	return tree
 end
+
 
 function lang.statement(P)
 	if P:nextif("var") then
