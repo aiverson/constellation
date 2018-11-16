@@ -223,6 +223,8 @@ function lang.statements(P)
 	return tree
 end
 
+local iterskip, iterfinish, iterres = {}, {}, {} --unique identities for the symbol table
+
 local function compile(tree, env)
 	local emit
 	local envstack = {env}
@@ -244,6 +246,7 @@ local function compile(tree, env)
 		envstack[#envstack][name] = val
 	end
 	local handlers = {}
+	local iter_res = {} --unique identity for the iterator result
 	function handlers.iterator(tree)
 		local iterator = terralib.types.newstruct(tree.name)
 		pushscope()
