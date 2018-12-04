@@ -17,6 +17,8 @@ end
 -- a statement is expected, but no code should be generated.
 local emptystatements = {kind = "statements", stats = terralib.newlist()}
 
+
+
 --[[
     Parsing logic for the from expression for the constellation language
 
@@ -39,6 +41,26 @@ function lang.from(P)
 	-- body contains the chain of queries within this expression 
 	tree.body = P:querychain()
 	return tree
+end
+
+
+--[[
+    Parsing logic for a query statement
+]]
+
+function lang.query(P)
+	-- must be a query statement
+	P:expect("iterator")
+	-- build the tree for this statement
+	local tree = Tree(P, "iterator")
+	-- name of the query
+	tree.name = P:expect(P.name).value
+	-- parse the arglist
+	tree.args = P:arglist()
+	-- parse the body
+	tree.body = P:statements()
+	-- parse the closing end
+	P:expect("end")
 end
 
 --[[
