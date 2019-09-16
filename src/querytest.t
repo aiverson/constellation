@@ -1,6 +1,6 @@
 import "query"
 
-iterator intrange(start: int, stop: int, step: int)
+iterator intrange(start: int, stop: int, step: int): int
 	iterate
 		if start > stop then
 			finish
@@ -9,9 +9,9 @@ iterator intrange(start: int, stop: int, step: int)
 		start = start + step
 end
 
-local res = from s in source map v = s * 2 end
+--local res = from s in source map v = s * 2 end
 
-local query sums(a: int)
+query sums(a: int): int
 	return from s in intrange(1, a, 1) reduce a, b = s in a + b end
 end
 

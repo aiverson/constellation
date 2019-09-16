@@ -308,7 +308,7 @@ local productions = {
 }
 
 fmr_methodmissing = macro(function(method, obj, ...)
-	print("method missing", method, obj, ...)
+	--print("method missing", method, obj, ...)
 	--terralib.printraw(obj)
 	return productions[method](obj, ...)
 end)
@@ -362,42 +362,7 @@ local function ArrayList(elemt)
 	return ALImpl
 end
 
-
-terra sqr(a: int): int --[[C.printf("%d\n", a);]] return a * a end
-terra sum(a: int, b: int): int
-	return a + b
-end
-terra even(a: int): bool return a % 2 == 0 end
-
-terra sumofsquares(limit: int): int
-	return range(1, limit, 1):map(sqr):reduce(sum)
-end
-
-terra sumofevensquares(limit: int): int
-	return range(1, limit, 1):filter(even):map(sqr):reduce(sum)
-end
-
-terra first10()
-	return range(1, 100, 1):take(8):take(3):reduce(sum)
-end
-
-terra printInt(a: int): int 
-	C.printf("%d, ", a)
-end
-
-terra diffAdd()
-	return range(1, 6, 1):each(printInt)
-end
-
-diffAdd:disas()
-print(diffAdd)
-diffAdd()
---print(first10:disas())
---print(first10())
-
---terralib.printraw(sumofsquares)
---print(sumofsquares)
---print(sumofsquares(100))
---
---print(sumofevensquares)
---print(sumofevensquares(5))
+return {
+	range = range,
+	Generator = Generator
+}

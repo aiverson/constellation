@@ -17,7 +17,15 @@ end
 -- a statement is expected, but no code should be generated.
 local emptystatements = {kind = "statements", stats = terralib.newlist()}
 
-
+function lang.entryStatement(P)
+	if P:matches("iterator") then
+		return P:iterator()
+	end
+	if P:matches("query") then
+		return P:query()
+	end
+	P:error "invalid entry statement"
+end
 
 --[[
     Parsing logic for the from expression for the constellation language
@@ -35,9 +43,8 @@ function lang.from(P)
 	tree.varname = P:expect(P.name).value
 	-- Expect the keyword in, to be followed by an expression 
 	P:expect("in")
-	-- Select the expression as a luaexpr
-	-- TODO: Should probably be a constellation expression rather than lua 
-	tree.sourceiter = P:luaexpr()
+	-- parse the source expression
+	tree.sourceiter = P:expression()
 	-- body contains the chain of queries within this expression 
 	tree.body = P:querychain()
 	return tree
@@ -50,13 +57,16 @@ end
 
 function lang.query(P)
 	-- must be a query statement
-	P:expect("iterator")
+	P:expect("query")
 	-- build the tree for this statement
-	local tree = Tree(P, "iterator")
+	local tree = Tree(P, "query")
 	-- name of the query
 	tree.name = P:expect(P.name).value
 	-- parse the arglist
 	tree.args = P:arglist()
+	-- parse the result type
+	P:expect(":")
+	tree.restype = P:luaexpr()
 	-- parse the body
 	tree.body = P:statements()
 	-- parse the closing end
@@ -88,6 +98,9 @@ function lang.iterator(P)
 	-- arglist is used for initialization of data structures (constructor
 	-- arguments)
 	tree.args = P:arglist()
+	-- parse the result type
+	P:expect(":")
+	tree.restype = P:luaexpr()
 	-- initialize is optional, and followed by statements if present
 	if P:nextif("initialize") then
 		tree.initialize = P:statements()
@@ -197,6 +210,10 @@ function lang.statement(P)
 	elseif P:nextif("finish") then
 		local tree = Tree(P, "finish")
 		return tree
+	elseif P:nextif("return") then
+		local tree = Tree(P, "return")
+		tree.val = P:expression()
+		return tree
 	else
 		local tree = Tree(P, "assign")
 		tree.lhs = P:expression()
@@ -226,6 +243,10 @@ lang.expression:prefix("(", function(P)
 	local v = P:expression()
 	P:expect(")")
 	return v
+end)
+
+lang.expression:prefix("from", function(P)
+	return P:from()
 end)
 
 lang.expression:prefix("-", function(P)
@@ -325,20 +346,40 @@ local function compile(tree, env)
 	end
 	local function declarename(name, val)
 		envstack[#envstack][name] = val
+		return val
 	end
 	local handlers = {}
-	local iter_res = {} --unique identity for the iterator result
 	function handlers.iterator(tree)
 		local iterator = terralib.types.newstruct(tree.name)
 		pushscope()
+		iterator.skip = declarename(iterskip, label("iterskip"))
+		iterator.finish = declarename(iterfinish, label("iterfinish"))
+		iterator.ressym = declarename(iterres, symbol(tree.restype(env), "iterres"))
 		for i, v in ipairs(tree.args) do
 			declarename(v.name, symbol(v.type(env), v.name))
 		end
-		iterator.initialize = quote [emit(tree.initialize)] end
-		iterator.iterate = quote [emit(tree.iterate)] end
-		iterator.finalize = quote [emit(tree.finalize)] end
+		iterator.initialize = function()
+			return quote [emit(tree.initialize)] end
+		end
+		iterator.iterate = function(ressym, skip, finish)
+			pushscope()
+			declarename(iterskip, skip)
+			declarename(iterfinish, finish)
+			declarename(iterres, ressym)
+			local result = quote [emit(tree.iterate)] end
+			popscope()
+			return result
+		end
+		iterator.finalize = function()
+			return quote [emit(tree.finalize)] end
+		end
 		popscope()
 		return iterator
+	end
+	function handlers.yield(tree)
+		return quote
+			[findname(iterres)] = [emit(tree.val)]
+		end
 	end
 	function handlers.statements(tree)
 		return quote [tree.stats:map(emit)] end
@@ -355,15 +396,93 @@ local function compile(tree, env)
 	function handlers.operator(tree)
 		terralib.printraw(tree.operands)
 		local operands = tree.operands:map(emit)
-		print(operator)
+		--print(operator)
 		terralib.printraw(operands)
 		return `operator(tree.operator, operands)
 	end
 	handlers["var"] = function(tree)
 		return findname(tree.name)
 	end
+	function handlers.assign(tree)
+		return quote [emit(tree.lhs)] = [emit(tree.rhs)] end
+	end
 	function handlers.finish(tree)
-		return quote goto finish end
+		return quote goto [findname(iterfinish)] end
+	end
+	function handlers.from(tree)
+		pushscope()
+		local stmts = terralib.newlist()
+		print("trying to compile from tree")
+		terralib.printraw(tree)
+		local source = symbol(tree.sourceiter.restype, tree.varname)
+		local sourceiter = emit(tree.sourceiter)
+		local state = {
+			initialize = function() 
+				return sourceiter.type.initialize()
+			end,
+			generate = function(skip, finish)
+				return sourceiter.type.generate(source, skip, finish)
+			end,
+			finalize = function()
+				return sourceiter.type.finalize()
+			end,
+			ressym = source
+		}
+		stmts:insert(quote var [source] end)
+
+		for i, step in ipairs(tree.body) do
+			if step.kind == "map" then
+				local expr = emit(step.val)
+				local ressym = declarename(step.name, symbol(expr.type, step.name))
+				local laststate = state
+				state = {
+					initialize = laststate.initialize,
+					finalize = laststate.finalize,
+					generate = function(skip, finish)
+						return quote
+							var [ressym]
+							[laststate.generate(mapinput, skip, finish)]
+							[ressym] = [expr]
+						end
+					end,
+					ressym = ressym
+				}
+			elseif step.kind == "filter" then
+				local cond = emit(step.cond)
+				local laststate = state
+				state = {
+					initialize = laststate.initialize,
+					finalize = laststate.finalize,
+					generate = function(skip, finish)
+						return quote
+							[laststate.generate(skip, finish)]
+							if [cond] then
+								goto [skip]
+							end
+						end
+					end,
+					ressym = laststate.ressym
+				}
+			elseif step.kind == "reduce" then
+				local expr1 = emit(step.vals[1])
+				local expr2 = step.vals[2] and emit(step.vals[2]) or nil
+				local accum = declarename(step.names[1], symbol(expr.type, step.names[1]))
+				error "unable to translate reduction step"
+			else
+				error "unable to compile intermediate in from-expression"
+			end
+		end
+		local skip, finish = label("skip"), label("finish")
+		local result = quote
+			[stmts]
+			[state.initialize()]
+			::[skip]::
+			[state.generate(skip, finish)]
+			goto [skip]
+			::[finish]::
+		end
+		popscope()
+		return result
 	end
 	function emit(tree)
 		if handlers[tree.kind] then
@@ -385,7 +504,7 @@ local function exprEntry(self, lexer)
 end
 
 local function statementEntry(self, lexer)
-	local tree = parsing.Parse(lang, lexer, "iterator")
+	local tree = parsing.Parse(lang, lexer, "entryStatement")
 	terralib.printraw(tree)
 	return function(env) return compile(tree, env()) end
 end
